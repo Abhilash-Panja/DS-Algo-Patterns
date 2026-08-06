@@ -1,0 +1,151 @@
+# Heap Pattern 1: Top-K / Kth Element (The Bounded Heap Pattern)
+
+*A focused deep-dive on the single most common heap pattern — what it is, how to recognize it instantly, how to derive the approach on an unseen problem, and a curated question list to build muscle memory.*
+
+---
+
+## 1. What This Pattern Actually Is
+
+Strip away the problem-specific language, and this pattern always reduces to one sentence:
+
+> **"Out of a set of `n` things (possibly arriving one at a time, possibly already given), I only ever care about the best `k` of them — I don't need the rest sorted, ranked, or even remembered."**
+
+That single sentence is the entire pattern. Everything else — engineers, points, frequencies, stream updates — is just a costume on top of it.
+
+The reason this deserves a heap instead of full sorting: **sorting the whole set costs `O(n log n)`, but if you only need the top `k`, a bounded heap gets you there in `O(n log k)`.** When `k` is small relative to `n`, that's a real, meaningful speedup — and when the data arrives as a live stream (new elements keep showing up), sorting isn't even an option, since you'd have to re-sort on every new arrival. A bounded heap updates in `O(log k)` per new element, no matter how large the stream gets.
+
+---
+
+## 2. How to Recognize It in an Unseen Problem (Under 30 Seconds)
+
+Ask these three questions, in order, the moment you finish reading a problem:
+
+**Q1: Does the problem ask for "the k largest," "the k smallest," "the k closest," or "the kth element"?**
+If the word "k" shows up attached to a ranking request — yes, this is likely Pattern 1.
+
+**Q2: Do I actually need the full sorted order of everything, or just the top/bottom `k`?**
+This is the question that separates Pattern 1 from "just sort it." If the problem only cares about `k` elements and doesn't care how the remaining `n - k` elements relate to each other, you're **wasting work** by fully sorting — that's your signal to reach for a bounded heap instead.
+
+**Q3: Does the data arrive incrementally (a stream, repeated calls, elements added one at a time) rather than all at once?**
+If yes, this locks it in even further — you literally *cannot* pre-sort a stream you haven't fully seen yet. A heap is close to the only sane option, since it lets you maintain "current top-k" as an ongoing, cheaply-updatable answer.
+
+If you answer "yes" to Q1 and Q2 (Q3 is a bonus signal, not required), you're looking at Pattern 1.
+
+---
+
+## 3. The Core Idea, Explained Slowly
+
+Say you want the **`k` largest** elements out of a stream.
+
+Counterintuitively, you use a **min-heap**, not a max-heap. Here's the reasoning, step by step, so it never feels like an arbitrary rule again:
+
+1. You want to keep exactly `k` elements in your heap at all times (once you've seen at least `k` elements) — these `k` elements represent your current best guess at "the `k` largest seen so far."
+2. The moment a new element arrives, you need to decide: does it belong in your top-`k`, kicking someone out? The only way it *doesn't* belong is if it's smaller than the **smallest** element currently in your top-`k`.
+3. So the one element you need instant access to, at every step, is **the smallest element among your current top-`k`** — because that's the one candidate for eviction.
+4. A **min-heap** puts the smallest element at the top in `O(1)` peek time. That's exactly the element you need to check and possibly evict. Hence: min-heap for "k largest," max-heap for "k smallest" (the logic mirrors exactly, just flipped).
+
+This is worth internalizing as a rule you *derive* every time, not memorize: **the heap type is always the opposite of what you're trying to find**, because the heap's job is to expose the *weakest member of your current best set* for eviction, not the best member itself (you don't need instant access to your best — you need instant access to your worst-of-the-best).
+
+---
+
+## 4. The Template
+
+```java
+import java.util.*;
+
+public List<Integer> topKLargest(int[] nums, int k) {
+    PriorityQueue<Integer> minHeap = new PriorityQueue<>(); // smallest of the top-k sits here
+
+    for (int num : nums) {
+        minHeap.offer(num);
+        if (minHeap.size() > k) {
+            minHeap.poll(); // evict the smallest — it didn't make the cut
+        }
+    }
+
+    return new ArrayList<>(minHeap); // heap now holds exactly the k largest elements
+}
+```
+
+Notice the shape: **admit unconditionally, then evict if over budget.** This two-line loop body (`offer`, then conditional `poll`) is the fingerprint of Pattern 1 — if you ever see this exact shape in a solution, you're looking at this pattern, even if the rest of the code looks unfamiliar.
+
+---
+
+## 5. Worked Example: Kth Largest Element in a Stream
+
+`https://leetcode.com/problems/kth-largest-element-in-a-stream/`
+
+Let's run the recognition questions and the template on an actual unseen-feeling problem.
+
+**Problem:** Design a class that, given an integer stream and a value `k`, can return the `k`th largest element in the stream **after every new element is added.**
+
+**Q1 (ranking request with a k)?** Yes — "kth largest."
+**Q2 (do we need full sorted order)?** No — we only ever need one specific rank, not the whole ordering.
+**Q3 (streaming/incremental)?** Yes — explicitly, elements are added one at a time via repeated calls.
+
+All three signals fire — this is Pattern 1, and the streaming signal tells us the heap must **persist as an object field**, not be rebuilt inside a single function call.
+
+**Reasoning to the answer:** we want the `k`th largest at any moment. Using the same logic as Section 3: keep a min-heap capped at size `k`. The smallest element in that heap (the top of the min-heap) is, by construction, exactly the `k`th largest element overall — because the heap holds the `k` largest elements seen so far, and the smallest among those `k` is by definition the `k`th largest.
+
+```java
+import java.util.*;
+
+class KthLargest {
+    private final PriorityQueue<Integer> minHeap;
+    private final int k;
+
+    public KthLargest(int k, int[] nums) {
+        this.k = k;
+        this.minHeap = new PriorityQueue<>();
+        for (int num : nums) {
+            add(num); // reuse the same admit/evict logic for the initial array
+        }
+    }
+
+    public int add(int val) {
+        minHeap.offer(val);
+        if (minHeap.size() > k) {
+            minHeap.poll();
+        }
+        return minHeap.peek(); // top of min-heap = kth largest so far
+    }
+}
+```
+
+Notice the constructor doesn't need any special-case logic — it just calls `add()` in a loop, because the admit/evict template is already correct even when the heap is being built up from empty. That's a good sign you've implemented the pattern correctly: the "initial batch" and "streaming updates" cases end up being the exact same code path.
+
+---
+
+## 6. Common Mistakes Specific to This Pattern
+
+- **Using a max-heap for "k largest."** This is the single most common error — beginners reach for a max-heap because the *goal* is "largest," forgetting that the heap's job is to expose the smallest-of-the-best for eviction, not the goal value itself.
+- **Forgetting the `size() > k` check is strict, not `>= k`.** You want the heap to hold *up to and including* `k` elements; evicting one late (checking `>= k` instead of `> k`) will cap you at `k - 1`.
+- **Re-sorting on every new element instead of maintaining the heap.** If you find yourself doing `Arrays.sort()` inside a loop or inside a repeated method call, you've abandoned the pattern and gone back to `O(n log n)` per update — a clear sign to stop and re-apply the template.
+- **Confusing "top-k heap" with "k-way merge heap" (Pattern 2).** Both use heaps of roughly size `k`, but Pattern 1's heap holds *candidates for your answer*, while Pattern 2's heap holds *one pointer per source*. If your problem has multiple sorted sources to combine rather than one stream to filter, you're likely in Pattern 2, not Pattern 1 — worth double-checking against Q1–Q3 above before coding.
+
+---
+
+## 7. Related Questions — Practice These in Order
+
+Work through these without looking at solutions first. Each one should take you under a minute to identify as Pattern 1 using the Section 2 checklist, and under a few minutes to code using the Section 4 template.
+
+1. **Kth Largest Element in an Array** — the static, non-streaming starting point.
+   `https://leetcode.com/problems/kth-largest-element-in-an-array/`
+2. **Kth Largest Element in a Stream** — the exact problem walked through above; solve it again from scratch without peeking.
+   `https://leetcode.com/problems/kth-largest-element-in-a-stream/`
+3. **K Closest Points to Origin** — same pattern, but the heap compares on a *derived* key (distance) instead of the raw value — practice adapting the comparator.
+   `https://leetcode.com/problems/k-closest-points-to-origin/`
+4. **Top K Frequent Elements** — requires a frequency map first, *then* the top-k heap on frequencies — a two-step composition of the pattern.
+   `https://leetcode.com/problems/top-k-frequent-elements/`
+5. **Top K Frequent Words** — same as above, but with a tie-breaking rule (alphabetical order on equal frequency) — good practice writing a multi-condition comparator.
+   `https://leetcode.com/problems/top-k-frequent-words/`
+6. **Kth Smallest Element in a Sorted Matrix** — solvable with a bounded max-heap of size `k` even though it also has a k-way-merge solution — useful for seeing how the same problem can belong to two patterns depending on your approach.
+   `https://leetcode.com/problems/kth-smallest-element-in-a-sorted-matrix/`
+7. **Find K Pairs with Smallest Sums** — combine this pattern with generating candidates on the fly rather than having them handed to you upfront.
+   `https://leetcode.com/problems/find-k-pairs-with-smallest-sums/`
+8. **Sort Characters By Frequency** — technically doesn't cap at a fixed `k`, but uses the exact same "heap ordered by a derived frequency key" mechanic — good for testing whether you can apply the idea without the "k" being explicit in the problem statement.
+   `https://leetcode.com/problems/sort-characters-by-frequency/`
+
+---
+
+*Once these feel automatic, move on to Pattern 2 (K-Way Merge) — it reuses the "bounded heap" muscle you just built, but shifts what the heap actually holds.*
