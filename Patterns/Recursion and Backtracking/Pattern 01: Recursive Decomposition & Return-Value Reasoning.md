@@ -309,9 +309,11 @@ Thus `d` divides `r`, so every common divisor of `(a,b)` is also a common diviso
 
 The sets of common divisors are identical. Therefore:
 
-\[
-\boxed{\gcd(a,b)=\gcd(b,r)=\gcd(b,a\bmod b)}
-\]
+$$
+a = bq + r,\qquad
+q = \left\lfloor \frac{a}{b} \right\rfloor,\qquad
+0 \le r < b
+$$
 
 This identity is not an arbitrary coding trick. It is the **correctness invariant** behind the recursive transition.
 
@@ -361,15 +363,26 @@ Use modulo to skip the chain
 
 For `a >= b > 0`:
 
-\[
-\gcd(a,b)=\gcd(a-b,b)=\gcd(a-2b,b)=\cdots=\gcd(a-qb,b)=\gcd(r,b)
-\]
+We know that:
+
+$$
+\begin{aligned}
+\gcd(a,b) &= \gcd(a-b,b) \\
+          &= \gcd(a-2b,b) \\
+          &\;\vdots \\
+          &= \gcd(a-qb,b) \\
+          &= \gcd(r,b)
+\end{aligned}
+$$
 
 By symmetry:
 
-\[
-\gcd(r,b)=\gcd(b,r)=\gcd(b,a\bmod b)
-\]
+$$
+\begin{aligned}
+\gcd(r,b) &= \gcd(b,r) \\
+          &= \gcd(b,a \bmod b)
+\end{aligned}
+$$
 
 **Subtlety:** When the remainder is `0`, the subtraction version can stop once the two positive inputs become equal; the modulo version reaches the zero-base case directly. The intermediate stopping behavior need not be identical for the returned GCD to agree.
 
