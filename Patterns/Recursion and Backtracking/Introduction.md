@@ -1,0 +1,697 @@
+# 1.00 — Recursion & Backtracking: The Problem-Solving Mental Model
+
+> **Goal:** Do not memorize recursive functions. Learn to identify a smaller version of the problem, define the state and the contract of each call, and decide whether to **compute**, **enumerate**, **search**, or **skip**.
+
+**Scope:** Foundation for the nine-pattern architecture. This file develops the mental model; individual patterns and curated problem sets live in later files.
+
+**Basis in my handwritten notes:** pp. 1–4 (Fibonacci, recursive tree, base case, call stack), pp. 4–6 (different recursion styles and **LCCM**), pp. 6–12 (N-Queens, Gold Mine, generator/checker), pp. 13–22 (K-th move, K-th permutation, K-th symbol). The generalized terminology, correctness clarifications, Java implementations, and complexity proofs below expand on those notes.
+
+---
+
+## 1. The Practical One-Line Definition
+
+**Recursion:** Solve a problem by giving a _strictly smaller or simpler_ instance of the same problem to another call, then use its answer (or its explored outcomes) to solve the current instance.
+
+**Backtracking:** Explore possible decisions incrementally; discard branches that cannot lead to an acceptable answer and undo path-specific changes before trying another decision.
+
+> Recursion is **how calls are organized**. Backtracking is **a search strategy**. Neither implies the other.
+
+### What capability do they give me?
+
+| Need                                                        | Capability                                                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Repeatedly reduce a problem to similar smaller instances    | Express the computation using a recurrence                                     |
+| Construct all valid possibilities                           | Organize a decision tree without manually writing nested loops for every depth |
+| Find one valid configuration                                | Stop exploring after a successful branch                                       |
+| Enforce constraints while constructing an answer            | Reject infeasible partial configurations early                                 |
+| Answer the K-th position in a recursively structured output | Count or skip entire branches when their sizes are known                       |
+
+The common idea is **a precise meaning for each recursive call**. The operations differ.
+
+---
+
+## 2. Why Recursion Exists: From Repetition to a Smaller Contract
+
+Consider Fibonacci numbers with `F(0) = 0`, `F(1) = 1`, and `F(n) = F(n-1) + F(n-2)` for `n >= 2`.
+
+A direct iterative solution is often better for this particular task. But Fibonacci is an excellent laboratory for understanding recursive calls.
+
+```text
+What is F(4)?
+    ↓
+I can express it using F(3) and F(2).
+    ↓
+Those calls know how to solve their own smaller problems.
+    ↓
+When they return, I combine their answers.
+```
+
+**The crucial contract:** `fib(n)` returns the n-th Fibonacci number; the caller need not know _how_ the smaller result was computed.
+
+```java
+static int fib(int n) {
+    if (n < 0) throw new IllegalArgumentException("n must be non-negative");
+    if (n <= 1) return n;
+    return fib(n - 1) + fib(n - 2);
+}
+```
+
+This teaches _decomposition_, **not** that recursion is automatically faster. In fact, the naive recursive Fibonacci method repeats work and is slower than the iterative solution.
+
+### Three questions that make a recurrence trustworthy
+
+1. **Contract:** What does `solve(state)` promise to return, print, or discover?
+2. **Progress:** Why is every next call closer to termination?
+3. **Combination:** Once smaller calls finish, what must the current call do?
+
+If any answer is vague, do not code yet.
+
+---
+
+## 3. Recursion Tree vs. Call Stack: Two Different Pictures
+
+Your notes draw both for Fibonacci. Keep both pictures, but attach a separate meaning to each.
+
+### 3.1 Recursion tree: all work performed
+
+```text
+                         fib(4)
+                        /      \
+                   fib(3)      fib(2)
+                   /   \       /   \
+              fib(2) fib(1) fib(1) fib(0)
+              /   \
+         fib(1) fib(0)
+```
+
+- Each node is a call.
+- Each edge means _this call invokes that call_.
+- **Repeated states** are visible: `fib(2)` appears twice.
+- This tree helps reason about the **total time**.
+
+### 3.2 Call stack: only active calls right now
+
+While Java evaluates the first branch of `fib(4)`, a snapshot may be:
+
+```text
+TOP       fib(1)   ← executing now
+          fib(2)   ← waiting for a result
+          fib(3)   ← waiting for a result
+BOTTOM    fib(4)   ← waiting for a result
+```
+
+- A frame contains parameters, local variables, and where execution will resume.
+- Returning removes a frame; the caller resumes _after_ the recursive call.
+- The stack is not the entire recursion tree in memory simultaneously.
+- This picture helps reason about **auxiliary stack space**.
+
+### 3.3 Precise dry run: `fib(3)`
+
+Java evaluates the left operand in `fib(n - 1) + fib(n - 2)` first.
+
+| Step | Event                | Active chain / effect         |
+| ---- | -------------------- | ----------------------------- |
+| 1    | Enter `fib(3)`       | `fib(3)`                      |
+| 2    | Call `fib(2)`        | `fib(3) → fib(2)`             |
+| 3    | Call `fib(1)`        | `fib(3) → fib(2) → fib(1)`    |
+| 4    | `fib(1)` returns `1` | Resume `fib(2)`               |
+| 5    | Call `fib(0)`        | `fib(3) → fib(2) → fib(0)`    |
+| 6    | `fib(0)` returns `0` | `fib(2)` now combines `1 + 0` |
+| 7    | `fib(2)` returns `1` | Resume `fib(3)`               |
+| 8    | Call `fib(1)`        | `fib(3) → fib(1)`             |
+| 9    | `fib(1)` returns `1` | `fib(3)` combines `1 + 1`     |
+| 10   | `fib(3)` returns `2` | Stack is empty                |
+
+**Active recall:** Which picture answers “how many calls occur?” Which answers “how many calls coexist at maximum depth?”
+
+---
+
+## 4. The Base Case Is a Proof Obligation, Not a Ritual
+
+A base case is a state whose answer is known without further recursion.
+
+A correct recursive solution must satisfy **all** of the following:
+
+1. **Validity:** The state and its parameters have clear meanings.
+2. **Termination:** Every recursive path reaches a terminal state or is stopped by a valid bound.
+3. **Correct base results:** Terminal states return the right value or perform the right action.
+4. **Correct transition:** The answer to the current state follows from smaller states.
+
+### Examples
+
+```java
+// Value-returning recursion
+if (n == 0) return 1;                 // factorial(0) = 1
+
+// Constructing all length-n choices
+if (index == n) {
+    results.add(new ArrayList<>(path));
+    return;
+}
+
+// Searching for one solution
+if (goalReached) return true;
+```
+
+**Counterexample to “having a base case is enough”:**
+
+```java
+static void bad(int n) {
+    if (n == 0) return;
+    bad(n + 1);  // n > 0 moves AWAY from zero
+}
+```
+
+The base case exists but is never reached for positive `n`.
+
+> **Rule:** Explicitly identify a decreasing measure (remaining length, remaining choices, tree height, distance to a boundary, or another well-founded quantity). It need not always be the numeric parameter `n`.
+
+---
+
+## 5. State, Choice, Transition, and Contract
+
+When looking at a new recursive problem, write these _before_ implementing it:
+
+```text
+State      = what uniquely describes the current smaller problem?
+Contract   = what will solve(state) return or accomplish?
+Choices    = what decisions may be made from this state?
+Transition = how does a choice change the state?
+Base case  = when is the state complete or impossible?
+Invariant  = what remains valid at every call?
+```
+
+### Example A — Factorial: computing a value
+
+```text
+State: n
+Contract: fact(n) returns n! for n >= 0
+Choice: none; a fixed reduction
+Transition: n -> n - 1
+Base: fact(0) = 1
+Combination: n * fact(n - 1)
+Invariant: the call means factorial of its current argument
+```
+
+```java
+static long factorial(int n) {
+    if (n < 0 || n > 20) throw new IllegalArgumentException("requires 0 <= n <= 20");
+    if (n == 0) return 1L;
+    return n * factorial(n - 1);
+}
+```
+
+`long` overflows after `20!`; the limit here is a correctness precondition, not a property of recursion.
+
+### Example B — Subsets: enumerating possibilities
+
+```text
+State: index, path
+Contract: enumerate all subsets formed by decisions for indices >= index,
+          given the current choices stored in path
+Choices: skip current element OR include it
+Transition: index -> index + 1
+Base: index == n => snapshot path
+Invariant: path contains exactly the elements selected from processed indices
+```
+
+Now recursive _branches_, not mathematical addition, combine outcomes.
+
+---
+
+## 6. The Four Jobs a Recursive Function Can Perform
+
+A recurring confusion is to treat all recursive methods as though they return a value. They do not.
+
+| Job                   | Typical return                  | Meaning                                   | Example                            |
+| --------------------- | ------------------------------- | ----------------------------------------- | ---------------------------------- |
+| **Compute**           | `int`, `long`, object           | Return an answer for this state           | Factorial, structural K-th queries |
+| **Generate**          | `void` + output collection      | Visit all valid terminal states           | Subsets, all permutations          |
+| **Decide / find one** | `boolean` or optional result    | Return once a successful branch is found  | Does a valid placement exist?      |
+| **Optimize**          | best value or maintained answer | Compare candidate answers; possibly prune | Minimum-cost valid arrangement     |
+
+### Code fingerprints
+
+```java
+// Compute: collect RETURN VALUES from smaller calls
+return combine(solve(smallerA), solve(smallerB));
+
+// Generate: record a SNAPSHOT at a completed state
+if (complete) { ans.add(new ArrayList<>(path)); return; }
+
+// Find one: short-circuit once a branch succeeds
+if (solve(nextState)) return true;
+
+// Optimize: compare full candidates (then prove any pruning rule)
+best = Math.min(best, candidateCost);
+```
+
+Do not choose `void` versus `boolean` by habit. Choose based on the function's _contract_.
+
+---
+
+## 7. Where Backtracking Enters: LCCM from My Notes
+
+Your handwritten notes use **LCCM** to explain backtracking. We can preserve that memory aid and make each step operational.
+
+```text
+L — Level:  What decision number / depth am I solving now?
+C — Choice: Which candidates are available at this level?
+C — Check:  Which choices are feasible given the partial solution?
+M — Move:   Apply the choice, recurse, then reverse path-specific changes.
+```
+
+The full cycle is:
+
+```text
+                  enter state (level)
+                          |
+                    choices available?
+                          |
+                     take a choice
+                          |
+                   feasible so far?
+                     /          \
+                   no            yes
+                   |              |
+                skip it     apply choice
+                                  |
+                             recurse
+                                  |
+                             undo choice
+                                  |
+                         try next choice
+```
+
+### The important invariant
+
+**At the entrance to every recursive call, the mutable `path` and its supporting bookkeeping must exactly describe the decisions already made.**
+
+After the call returns, the caller must restore the state to what it was _before_ exploring that choice.
+
+### Why “undo” matters — a complete small example
+
+Input: `[1, 2]`. We want all subsets.
+
+```java
+import java.util.*;
+
+class Solution {
+    public List<List<Integer>> subsets(int[] nums) {
+        List<List<Integer>> ans = new ArrayList<>();
+        dfs(0, nums, new ArrayList<>(), ans);
+        return ans;
+    }
+
+    private void dfs(int index, int[] nums,
+                     List<Integer> path, List<List<Integer>> ans) {
+        if (index == nums.length) {
+            ans.add(new ArrayList<>(path)); // snapshot, not a shared reference
+            return;
+        }
+
+        // Choice 1: do not include nums[index].
+        dfs(index + 1, nums, path, ans);
+
+        // Choice 2: include it.
+        path.add(nums[index]);
+        dfs(index + 1, nums, path, ans);
+        path.remove(path.size() - 1);      // restore state for caller
+    }
+}
+```
+
+#### Dry run
+
+| Call/event          | `index` | `path`   | Recorded |
+| ------------------- | ------: | -------- | -------- |
+| Start               |       0 | `[]`     | —        |
+| Skip 1; skip 2      |       2 | `[]`     | `[]`     |
+| Include 2           |       2 | `[2]`    | `[2]`    |
+| Undo 2              |       1 | `[]`     | —        |
+| Include 1; skip 2   |       2 | `[1]`    | `[1]`    |
+| Include 2           |       2 | `[1, 2]` | `[1, 2]` |
+| Undo 2, then undo 1 |       — | `[]`     | —        |
+
+**Why snapshot?** `path` is the same mutable object throughout the search. Adding `path` itself to `ans` would make the stored entries reflect later mutations; copying preserves the state at that completed branch.
+
+**Why not always undo?** If each call builds an immutable/new state and never mutates shared state, there may be nothing to undo. Undo is required for _shared mutable path-specific state_, not as a ceremonial line in every recursion.
+
+---
+
+## 8. From N-Queens to a General Constraint Search
+
+Your N-Queens discussion (pp. 6–7) identifies constraints on occupied columns and diagonals. That naturally becomes LCCM:
+
+```text
+Level  = row being filled
+Choice = candidate column in this row
+Check  = no earlier queen conflicts in column or diagonals
+Move   = place queen / mark occupancy -> recurse -> unmark
+```
+
+**Invariant:** Before placing a queen for `row`, queens already placed in rows `0..row-1` do not attack each other.
+
+If one queen is placed in every row, no row-conflict check is needed. Column and diagonal checks are still needed.
+
+For queens at `(r1, c1)` and `(r2, c2)`:
+
+```text
+Same column:    c1 == c2
+Same diagonal:  abs(r1 - r2) == abs(c1 - c2)
+```
+
+That diagonal test is a **general coordinate property**, not an arbitrary shortcut tied to one board.
+
+### Minimal search skeleton (illustrative, not the full N-Queens solution)
+
+```java
+void placeRow(int row, int n, boolean[] col,
+              boolean[] diagDown, boolean[] diagUp) {
+    if (row == n) {
+        // Found one valid configuration; record it if needed.
+        return;
+    }
+
+    for (int c = 0; c < n; c++) {
+        int down = row - c + n - 1;
+        int up = row + c;
+        if (col[c] || diagDown[down] || diagUp[up]) continue;
+
+        col[c] = diagDown[down] = diagUp[up] = true;
+        placeRow(row + 1, n, col, diagDown, diagUp);
+        col[c] = diagDown[down] = diagUp[up] = false;
+    }
+}
+```
+
+**Precondition:** Both diagonal arrays have length `2*n - 1`, and `n >= 1`. This skeleton counts or records nothing by itself; its purpose is to expose the invariant and restoration points. Full answer construction appears in Pattern 07.
+
+---
+
+## 9. Generator vs. Checker: A Great Idea That Needs a Boundary
+
+In the cryptarithmetic section (pp. 9–12), you separate:
+
+```text
+Generator -> propose an assignment
+Checker   -> verify constraints
+```
+
+That is valid as a _first brute-force design_. If there are `d` distinct letters assigned distinct decimal digits, the number of full injective assignments is `10! / (10-d)!` (provided `d <= 10`), before excluding leading-zero violations.
+
+However, **checking only fully generated assignments can waste enormous work**.
+
+### Better question
+
+> Can part of the constraint already be tested on a partial assignment?
+
+If yes, move the checker _inside the search_: check as soon as sufficient information is available, and stop exploring invalid prefixes.
+
+```text
+Generate everything -> check at leaf
+            ↓
+Generate one step -> check partial feasibility -> prune or continue
+```
+
+**Important correctness boundary:** A partial checker may prune only if _no completion of that partial state can satisfy the problem_. Rejecting a branch because its current numeric total is not the final target is often invalid when future decisions can change that total.
+
+---
+
+## 10. Not All Recursion Generates All Possibilities
+
+Your K-th Symbol in Grammar, K-th Tower of Hanoi move, and K-th Permutation notes (pp. 13–22) pursue a different question:
+
+> If I only need one indexed result, why construct every earlier result?
+
+This leads to _structural recursion_ and _branch skipping_.
+
+### Two importantly different mechanisms
+
+**A. Recursive structure identifies a smaller subproblem.**
+
+For the standard K-th Symbol in Grammar problem, a position in row `n` maps to its parent at index `(k + 1) / 2` in row `n-1` (for 1-based indexing). Whether the child is flipped depends on whether `k` is odd or even. This is a property of that grammar's construction, not a generic recursion law.
+
+**B. Known branch sizes permit rank selection.**
+
+For a lexicographic permutation of `n` distinct values, each possible first value begins a block of `(n-1)!` permutations. After converting `k` to zero-based indexing, integer division and remainder select the block and the position inside it.
+
+These ideas are related by _skipping work_, but their invariants and formulas differ.
+
+### What could go wrong?
+
+- Blindly generating all permutations may cost factorial time for a single K-th result.
+- Blindly applying a factorial-block formula to non-distinct elements produces wrong ranks unless duplicate counts are incorporated.
+- Forgetting whether `k` is 0-based or 1-based causes off-by-one errors.
+- A branch can be skipped only when its count or structural relation is established.
+
+This is why structural recursion has its own pattern file rather than being taught as ordinary backtracking.
+
+---
+
+## 11. Complexity: Count Calls, Work, Depth, and Output Separately
+
+Never infer complexity from “there are two recursive calls” without examining the full recurrence.
+
+### 11.1 Naive Fibonacci
+
+```text
+T(n) = T(n-1) + T(n-2) + O(1)
+Time: exponential (Theta(phi^n), where phi ≈ 1.618)
+Max active stack depth: O(n)
+Auxiliary space: O(n)
+```
+
+`O(2^n)` is a valid loose upper bound, but it is not the tight bound. The recursion tree may have exponentially many calls; only one branch is active on the stack at any instant.
+
+### 11.2 Include–exclude subsets
+
+```text
+Number of leaves: 2^n
+Number of recursion-tree nodes: O(2^n)
+Stack depth: O(n)
+Copying each subset can take O(n)
+Total time for materializing all subsets: O(n * 2^n)
+Total output storage: O(n * 2^n)
+Auxiliary space excluding output: O(n)
+```
+
+The `O(n)` copying cost matters: output construction is not free.
+
+### 11.3 Generic branching tree
+
+A search with at most `b` choices at each level and depth at most `d` has a _worst-case upper bound_ of `O(b^d)` nodes when each state does constant local work. Real bounds depend on changing branch counts and the cost of checks and copies.
+
+**Example:** Permuting `n` distinct elements gives `n!` leaves; producing every length-`n` answer costs `O(n * n!)` including copying. The in-progress path and used array need `O(n)` auxiliary space, excluding the output.
+
+### 11.4 What pruning does and does not promise
+
+Pruning may dramatically reduce explored nodes on particular inputs. It **does not automatically improve the worst-case asymptotic bound**. State what is proven, not merely what feels faster in practice.
+
+### 11.5 Why two different recursive calls are not always two simultaneous stacks
+
+```java
+solve(left);
+solve(right);
+```
+
+These normally execute sequentially; the first finishes before the second starts. Maximum call depth is determined by the longest active chain, not by summing the stack depths of both branches.
+
+---
+
+## 12. When NOT to Reach for Recursion / Backtracking
+
+| Situation                                      | Better first consideration                | Why                                                           |
+| ---------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
+| Simple one-direction linear scan               | Loop                                      | Simpler control flow and no call-stack overhead               |
+| Fibonacci or repeated states                   | Iteration / memoization / DP              | Avoid recomputing identical subproblems                       |
+| Reachability or shortest path in a large graph | Graph traversal / shortest-path algorithm | Path semantics and revisits require graph-specific invariants |
+| An apparently local best choice                | Greedy only with a proof                  | Neither guessing nor backtracking is automatically best       |
+| Need only one rank in a structured enumeration | Count and skip branches                   | Avoid enumerating earlier candidates                          |
+| Input depth may exceed safe Java call stack    | Iterative stack / loop                    | Java recursion can throw `StackOverflowError`                 |
+
+**A word like “all,” “choose,” or “K-th” is only a clue.** The decision structure, constraints, output requirement, and proof of safe skipping determine the actual technique.
+
+---
+
+## 13. Nine-Pattern Map: Which Question Is Each Pattern Answering?
+
+| #   | Pattern                                 | Key question                                               | Recurring invariant                                                      |
+| --- | --------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 01  | Recursive Decomposition & Return Values | How can a smaller instance return what this state needs?   | Contract for `solve(state)` remains valid                                |
+| 02  | Structural Recursion & Branch Skipping  | Can I locate the target without building earlier outcomes? | The target rank/position always stays within the retained subproblem     |
+| 03  | Binary Choice / Include–Exclude         | Does each item create a take/skip decision?                | Processed positions have fixed decisions                                 |
+| 04  | For-Loop Selection / Combinations       | Which next candidate may I choose and from where?          | Candidate indices obey ordering/reuse rules                              |
+| 05  | Permutation / Arrangement               | Which unused choice fills the next position?               | Every selected value occupies one position and respects uniqueness rules |
+| 06  | Partitioning / Segmentation             | Where should the next segment end?                         | Chosen segments are valid and cover a prefix exactly                     |
+| 07  | Constraint Satisfaction & Pruning       | Is the partial configuration still completable?            | Every committed choice satisfies necessary constraints                   |
+| 08  | Grid / Path Backtracking                | Where may the current path move next?                      | Current path/visited state is consistent and legal                       |
+| 09  | State-Space Search & Optimization       | Can this branch improve the best known result?             | Bound used for pruning is sound and best-so-far is valid                 |
+
+**Note:** Pattern 07 is often combined with 04 or 05; patterns are _reasoning components_, not mutually exclusive labels.
+
+---
+
+## 14. Unseen-Problem Recognition: First 60–90 Seconds
+
+Do not identify a pattern from a single keyword. Work through this sequence:
+
+```text
+1. INPUT / OUTPUT:
+   What exactly is given? One result, all results, existence, count, or optimum?
+
+2. STATE:
+   What does a smaller version of this problem look like?
+
+3. CONSTRAINTS:
+   How large is n? Is factorial/exponential search feasible?
+
+4. DECISION SHAPE:
+   One forced reduction? Take/skip? Choose next index? Fill a position?
+   Choose a cut? Move to a neighbor?
+
+5. PROGRESS:
+   What decreases or gets fixed after one decision?
+
+6. CHECK:
+   When do we know a partial solution is impossible?
+
+7. STATE MAINTENANCE:
+   What must be carried and later restored?
+
+8. ALTERNATIVES:
+   Can the same state repeat? Can a branch be counted/skipped?
+   Is this really DP, greedy, graph search, or structural recursion?
+
+9. INVARIANT:
+   State one sentence that stays true at entry to every call.
+
+10. CONTRACT:
+    Only then decide return type and write the template.
+```
+
+### Compact decision tree
+
+```text
+Can the problem be reduced to smaller instances of itself?
+|
++-- No --> Recursion is not the natural first tool.
+|
++-- Yes --> Does each state have a forced next step?
+             |
+             +-- Yes --> Compute smaller result (Pattern 01)
+             |           OR exploit structure/rank (Pattern 02).
+             |
+             +-- No --> Are we exploring multiple choices?
+                          |
+                          +-- No --> Recheck the recurrence/state.
+                          |
+                          +-- Yes --> What is a decision?
+                                       |
+                                       +-- take/skip item --> 03
+                                       +-- choose next candidate/index --> 04
+                                       +-- arrange unused elements --> 05
+                                       +-- choose a segment boundary --> 06
+                                       +-- satisfy placement constraints --> 07
+                                       +-- move along a path/grid --> 08
+                                       +-- optimize best result --> 09
+
+Before exploring: can we reject an impossible partial state?
+Before enumerating: can we count/skip branches or cache repeated states?
+```
+
+---
+
+## 15. Foundation Mistake Library
+
+| Mistake                                        | Why it happens                                   | How to catch it                                       | Prevention rule                             |
+| ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------- |
+| Base case exists but is unreachable            | Progress not defined                             | Trace the changing parameters                         | Identify a decreasing measure               |
+| Confusing recursion tree with call stack       | Both are drawn as nested calls                   | Ask whether the diagram is all calls or active frames | Use tree for time, stack for depth          |
+| Returning `void` when caller needs information | Contract not chosen                              | Ask what the caller does after the call               | State return contract first                 |
+| Forgetting undo                                | Mutable path leaks across siblings               | Trace `path` before/after a child                     | Restore every path-specific mutation        |
+| Storing a shared `path` reference              | Reference vs. value confusion                    | See whether past answers change                       | Copy at the solution boundary               |
+| Over-pruning                                   | Treating incomplete failure as permanent failure | Find a possible future completion                     | Prune only with a sound impossibility proof |
+| Counting branches as constant-time output      | Copying ignored                                  | Count bytes/elements returned                         | Include materialization cost                |
+| Treating recursion as inherently optimized     | Elegant code mistaken for efficiency             | Look for repeated identical states                    | Consider DP, iteration, or skipping         |
+| Using a word as a pattern trigger              | Surface recognition                              | Restate structural choice/invariant                   | Explain _why_ the invariant fits            |
+| Missing zero-based/one-based conversion        | Rank semantics not specified                     | Test the first and last answer                        | Define index convention before recursion    |
+
+---
+
+## 16. Interview Explanation Templates
+
+### Value-returning recursion (about 45 seconds)
+
+> “I define `solve(state)` to return [precise answer] for this smaller instance. The base case handles [smallest valid state]. Every other state reduces to [smaller state(s)], and I combine the returned values using [rule]. Each transition makes progress because [decreasing measure]. The important invariant is [contract]. I'll then count the recursive calls for time and the maximum active depth for stack space.”
+
+### Backtracking (about 60 seconds)
+
+> “I'll build a partial answer one decision at a time. The state contains [level] and [chosen values/used markers]. At each level I try only choices satisfying [necessary constraint]. The invariant is that the current partial answer is valid and bookkeeping matches it. For each choice I apply it, explore, and undo it so the next branch starts from the same parent state. At a complete valid state I [record a snapshot / return true / update best]. Then I'll analyze the decision-tree size and the cost of checking and recording solutions.”
+
+---
+
+## 17. Mastery Check — Before Pattern 01
+
+Check each item only if you can explain it **without rereading the section**.
+
+- [ ] I can define recursion through a smaller-state contract, not “a function calling itself.”
+- [ ] I can distinguish recursion as a mechanism from backtracking as a search strategy.
+- [ ] I can trace `fib(3)` in the correct execution order.
+- [ ] I can draw the recursion tree and identify the maximum active call-stack depth.
+- [ ] I can identify a base case **and** prove each branch makes progress.
+- [ ] I can define state, contract, choices, transition, base case, and invariant before coding.
+- [ ] I can distinguish compute, generate, find-one, and optimize recursion.
+- [ ] I can explain **LCCM** without notes.
+- [ ] I can reconstruct the subsets skeleton and explain the purpose of `add`, `remove`, and copying.
+- [ ] I can explain why N-Queens can reject partial configurations.
+- [ ] I can give a counterexample to unsafe pruning.
+- [ ] I can differentiate naive generation from counting/skipping branches.
+- [ ] I can explain time vs. auxiliary stack space for Fibonacci and subsets.
+- [ ] I can say when recursion/backtracking is a poor first choice.
+
+### Active recall — do not look above
+
+1. What does a recursive function's **contract** state?
+2. Why does `fib(4)` repeat work while using only `O(n)` auxiliary stack space?
+3. Can a recursive method have a base case and still not terminate? Demonstrate.
+4. What are four different jobs a recursive function can perform?
+5. In LCCM, what is a **level** in the subsets problem? What is it in N-Queens?
+6. When is an explicit undo necessary? When is it unnecessary?
+7. Why must a mutable list be copied when storing a completed subset?
+8. How does an early partial check differ from a final checker?
+9. What makes pruning _provably safe_?
+10. Why can't you blindly use factorial rank-block logic for repeated elements?
+11. What difference does returning `boolean` make when only one valid result is needed?
+12. What extra cost appears when we materialize `2^n` subsets?
+13. What changes when the recursion repeatedly encounters the same state?
+14. How would you explain your invariant _before_ writing a single line of Java?
+15. Which two problems from your existing notes use structural skipping rather than exhaustive search?
+
+### Three short diagnostic prompts
+
+**A.** Given an array, print all subsequences in original order. Identify state, two choices, base case, and invariant. **Do not code yet.**
+
+**B.** Given an `n × n` board, place one queen per row without attacks. Identify exactly which partial constraints can be checked after placing a queen. **Do not code yet.**
+
+**C.** You need only the 70th item of a conceptual enumeration containing millions of possibilities. What information about each subtree might let you avoid generating earlier items? **Do not assume the method is always applicable.**
+
+---
+
+## 18. Revision Protocol
+
+**24 hours — 10 minutes:** Reproduce the recursion-tree versus stack distinction, dry-run `fib(3)`, and write the subsets skeleton from memory.
+
+**7 days — 15 minutes:** Explain LCCM using subsets and N-Queens; answer active-recall questions 6–12; correct any invariant or undo mistakes.
+
+**30 days — 15 minutes:** Without notes, draw the nine-pattern map and the decision tree; classify three unfamiliar problems based on decision structure, not keywords.
+
+**Interview week — 5 minutes:** Remember **contract → progress → base → choices → invariant → restore → complexity**. Revisit the two code fingerprints: value-returning recurrence and `choose → recurse → undo`.
+
+---
+
+## Exit Criterion
+
+You are ready for **`1.01 Recursive Decomposition & Return-Value Reasoning.md`** when you can take a fresh problem statement, define a meaningful recursive contract, justify termination, identify the correct return/collection behavior, and explain the difference between total search work and peak stack usage.
+
+> **Final mental model:** Recursion does not replace reasoning. It makes a carefully defined _smaller-problem contract_ executable. Backtracking builds on that contract to explore choices while maintaining and restoring a _valid partial state_.
