@@ -1,0 +1,189 @@
+# Revision Checklist - Two Pointers and Sliding Window
+
+## 1. Straight-Line Practice Order
+
+~~~text
+Foundation
+  ↓
+Fixed-size window: running sum
+  ↓
+Fixed-size window: frequency state
+  ↓
+Variable window: longest feasible
+  ↓
+Variable window: shortest feasible
+  ↓
+Sorted Two Sum
+  ↓
+3Sum and duplicate handling
+  ↓
+Read/write compaction
+  ↓
+Two-source merge
+  ↓
+k-way merge boundary with heap
+  ↓
+Mixed-pattern problems
+  ↓
+Unseen test
+~~~
+
+Introduce one new idea at a time. Do not jump to the hardest problem merely because it uses two pointers.
+
+## 2. 24-Hour Revision
+
+Without opening the notes, reproduce:
+
+- the fixed-window add/remove template;
+- the longest-feasible and shortest-feasible variable-window templates;
+- the proof for moving left or right in sorted Two Sum;
+- the read/write invariant;
+- the difference between two-source merge and k-way heap merge.
+
+Then solve one anchor problem from Patterns 1, 2, and 3.
+
+## 3. 7-Day Revision
+
+Redo:
+
+- Maximum Average Subarray I;
+- Minimum Size Subarray Sum;
+- Longest Substring Without Repeating Characters;
+- Two Sum II;
+- Move Zeroes;
+- Merge Sorted Array.
+
+For each problem, write the invariant before coding. If the invariant is not clear, do not count the problem as mastered.
+
+## 4. 30-Day Revision
+
+From memory, write:
+
+1. the five-pattern decision tree;
+2. one negative signal for each pattern;
+3. one reason a tempting neighboring pattern fails;
+4. the complexity shape for each pattern;
+5. a Java skeleton for fixed window, variable window, sorted pair, read/write, and two-source merge.
+
+Then solve one disguised problem without looking at its tags.
+
+## 5. Interview-Week Checklist
+
+### Triggers
+
+- fixed length k and contiguous;
+- longest/shortest feasible contiguous region;
+- sorted pair/triple or monotone boundary objective;
+- in-place filtering or compaction;
+- multiple sorted frontiers.
+
+### Invariants
+
+- exactly k items in the fixed window;
+- variable-window state is valid at answer time;
+- eliminated pairs cannot contain a better answer;
+- processed prefix is final;
+- next output is the smallest current frontier.
+
+### Traps
+
+- negative numbers;
+- original indices after sorting;
+- duplicate values;
+- stale or zero frequency keys;
+- integer overflow;
+- writing over unread merge values;
+- confusing top-k with k-way merge.
+
+### Anchor problems
+
+- Maximum Average Subarray I;
+- Minimum Size Subarray Sum;
+- Longest Substring Without Repeating Characters;
+- Two Sum II;
+- 3Sum;
+- Move Zeroes;
+- Merge Sorted Array.
+
+## 6. Pattern Mastery Checklist
+
+### Fixed-size window
+
+- [ ] Recognize it within 30 seconds.
+- [ ] State the exact length invariant.
+- [ ] Write the entering/leaving update.
+- [ ] Explain running sum versus prefix sum.
+- [ ] Handle frequency state.
+- [ ] Explain complexity.
+
+### Variable-size window
+
+- [ ] State the feasibility condition.
+- [ ] Prove monotonicity.
+- [ ] Choose longest versus shortest loop order.
+- [ ] Explain why the inner while is still linear.
+- [ ] Identify when prefix sum or deque is required.
+- [ ] Handle no-answer cases.
+
+### Sorted opposite pointers
+
+- [ ] State why sorting is safe.
+- [ ] Prove each pointer movement.
+- [ ] Preserve indices when needed.
+- [ ] Handle duplicates in 3Sum.
+- [ ] Track a best distance for closest variants.
+- [ ] Distinguish hashmap Two Sum.
+
+### Read/write pointers
+
+- [ ] State what the output prefix means.
+- [ ] Preserve order when required.
+- [ ] Return the logical length.
+- [ ] Distinguish compaction from partition.
+- [ ] Justify O(1) extra space.
+
+### Multi-sequence merge
+
+- [ ] State what each source pointer represents.
+- [ ] Merge two sources in linear time.
+- [ ] Know when a heap is required.
+- [ ] Distinguish frontier state from answer-candidate state.
+- [ ] Handle exhausted sources and duplicates.
+
+## 7. Active Recall Questions
+
+1. What makes a sliding-window condition monotone?
+2. Why does a fixed-size window need only one add and one remove?
+3. Why can negative numbers break a sum-based variable window?
+4. When is prefix sum plus hashmap better than a window?
+5. Why does a too-small sorted pair sum force the left pointer to move?
+6. Why does a too-large sorted pair sum force the right pointer to move?
+7. Why is sorting unsafe when original indices must be returned?
+8. Why must 3Sum skip duplicates at the fixed index?
+9. What does the read/write prefix represent?
+10. When can a partition use two pointers from opposite ends instead?
+11. Why can two sorted arrays be merged without a heap?
+12. Why does k-way merge usually need a heap?
+13. What is the difference between a top-k heap and a frontier heap?
+14. Why can a nested while loop still be O(n)?
+15. What answer-update order is required for a shortest feasible window?
+16. Which pattern would you choose for an exact subarray sum with negatives?
+17. Which data structure maintains a sliding-window maximum?
+18. What should you test when the window is empty?
+19. What should you test when all values are duplicates?
+20. What sentence proves that a pointer movement is safe?
+
+## 8. Final Self-Test
+
+For any new problem, answer these before coding:
+
+~~~text
+What is contiguous?
+What is the objective?
+What is the monotone property?
+What state changes when a boundary moves?
+What is my invariant?
+What candidates become impossible after this move?
+What is the complexity?
+~~~
+
