@@ -4,18 +4,18 @@
 
 ## Recommended order
 
-1. [Introduction](1.00%20Introduction.md)
-2. [Fixed-Size Sliding Window](1.01%20Pattern%201%20-%20Fixed-Size%20Sliding%20Window.md)
-3. [Variable-Size Sliding Window](1.02%20Pattern%202%20-%20Variable-Size%20Sliding%20Window.md)
-4. [Sorted Opposite-Direction Pointers](1.03%20Pattern%203%20-%20Sorted%20Opposite-Direction%20Pointers.md)
-5. [Same-Direction Read-Write Pointers](1.04%20Pattern%204%20-%20Same-Direction%20Read-Write%20Pointers.md)
-6. [Multi-Sequence Merge](1.05%20Pattern%205%20-%20Multi-Sequence%20Merge.md)
-7. [Approaching an Unknown Problem](Approaching%20Unknown%20Problem.md)
-8. [Pattern Decision Tree](Pattern%20Decision%20Tree.md)
-9. [Pattern Summary](Summary%20of%20Existing%20Patterns.md)
-10. [Mistake Library](Mistake%20Library.md)
-11. [Revision Checklist](Revision%20Checklist.md)
-12. [Unseen-Style Test](Unseen%20Test%20Problems.md)
+1. [Introduction](./01.Introduction.md)
+2. [Fixed-Size Sliding Window](./02.Fixed-Size%20Sliding%20Window.md)
+3. [Variable-Size Sliding Window](./03.Variable-Size%20Sliding%20Window.md)
+4. [Sorted Opposite-Direction Pointers](./04.Sorted%20Opposite-Direction%20Pointers.md)
+5. [Same-Direction Read-Write Pointers](./05.Same-Direction%20Read-Write%20Pointers.md)
+6. [Multi-Sequence Merge](./06.Multi-Sequence%20Merge.md)
+7. [Approaching an Unknown Problem](./07.Approaching%20an%20Unknown%20Two-Pointer%20or%20Sliding-Window%20Problem.md)
+8. [Pattern Decision Tree](./08.Pattern%20Decision%20Tree.md)
+9. [Pattern Summary](./09.Two%20Pointers%20and%20Sliding%20Window%20-%20Pattern%20Summary.md)
+10. [Mistake Library](./10.%20Mistake%20Library%20-%20Two%20Pointers%20and%20Sliding%20Window.md)
+11. [Revision Checklist](./11.Revision%20Checklist%20-%20Two%20Pointers%20and%20Sliding%20Window.md)
+12. [Unseen-Style Test](./12.Unseen-Style%20Test%20-%20Two%20Pointers%20and%20Sliding%20Window.md)
 
 ## Source-note integration
 
