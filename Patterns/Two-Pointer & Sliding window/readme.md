@@ -5,7 +5,7 @@
 ## Recommended order
 
 1. [Introduction](1.00%20Introduction.md)
-2. [Fixed-Size Sliding Window](1.01%20Pattern%201%20-%20Fixed-Size%20Sliding%20Window.md)
+2. [Fixed-Size Sliding Window]([1.01%20Pattern%201%20-%20Fixed-Size%20Sliding%20Window.md](https://github.com/Abhilash-Panja/DS-Algo-Patterns/blob/main/Patterns/Two-Pointer%20%26%20Sliding%20window/1.Fixed-Size%20Sliding%20Window.md))
 3. [Variable-Size Sliding Window](1.02%20Pattern%202%20-%20Variable-Size%20Sliding%20Window.md)
 4. [Sorted Opposite-Direction Pointers](1.03%20Pattern%203%20-%20Sorted%20Opposite-Direction%20Pointers.md)
 5. [Same-Direction Read-Write Pointers](1.04%20Pattern%204%20-%20Same-Direction%20Read-Write%20Pointers.md)
